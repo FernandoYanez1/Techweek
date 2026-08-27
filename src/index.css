@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  user-select: none;
+  touch-action: pan-y;
+  overflow: hidden; 
+  background-color: #f0f8ff;
+}
+
+@keyframes foto-standby-entrando {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.foto-standby-entrando {
+  animation: foto-standby-entrando 700ms ease-out both;
+}
