@@ -2,9 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../core/store';
 import type { User } from '../../core/store';
 import { saveUserDB, getAllUsersDB } from '../../core/db';
-import { UserPlus, Users, ArrowLeft, CheckCircle2, Settings, Search, Camera, Play, Trophy } from 'lucide-react';
+import { UserPlus, Users, ArrowLeft, CheckCircle2, Settings, Camera, Play, Trophy, Delete } from 'lucide-react';
 
 const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// Teclado virtual apenas para a tela de Novo Cadastro
+const TECLADO_L1 = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'];
+const TECLADO_L2 = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Ç'];
+const TECLADO_L3 = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
 
 export default function Welcome() {
   const { setScreen, setActiveRankingTab, loginUser, openCamera } = useAppStore();
@@ -13,9 +18,9 @@ export default function Welcome() {
   
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
+  const [activeField, setActiveField] = useState<'name' | 'department'>('name');
 
   const [dbUsers, setDbUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [letterFilter, setLetterFilter] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,14 +30,13 @@ export default function Welcome() {
   }, [view]);
 
   const filteredUsers = useMemo(() => {
-    return dbUsers.filter(u => {
-      if (letterFilter) {
-        return u.name.toUpperCase().startsWith(letterFilter);
-      }
-      return u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-             u.department.toLowerCase().includes(searchTerm.toLowerCase());
-    }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [dbUsers, searchTerm, letterFilter]);
+    if (!letterFilter) {
+      return [...dbUsers].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return dbUsers
+      .filter(u => u.name.toUpperCase().startsWith(letterFilter))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [dbUsers, letterFilter]);
 
   const handleCreateProfile = async () => {
     if (name.trim() === '' || department.trim() === '') return;
@@ -65,6 +69,57 @@ export default function Welcome() {
     setScreen('menu');
   };
 
+  // Funções do Teclado Virtual (apenas para cadastro)
+  const handleKeyClick = (key: string) => {
+    if (activeField === 'name') {
+      if (name.length < 30) setName(prev => prev + key);
+    } else {
+      if (department.length < 15) setDepartment(prev => prev + key);
+    }
+  };
+
+  const handleBackspace = () => {
+    if (activeField === 'name') {
+      setName(prev => prev.slice(0, -1));
+    } else {
+      setDepartment(prev => prev.slice(0, -1));
+    }
+  };
+
+  const renderKeyboard = () => (
+    <div className="w-full bg-slate-800 p-6 rounded-[2rem] border-2 border-slate-700 shadow-2xl flex flex-col gap-3">
+      <div className="flex justify-center gap-2">
+        {TECLADO_L1.map(key => (
+          <button key={key} onClick={() => handleKeyClick(key)} className="w-[8%] aspect-[4/5] bg-slate-700 hover:bg-cyan-500 text-white text-3xl font-bold rounded-xl active:scale-90 transition-all border-b-4 border-slate-900 hover:border-cyan-700 flex items-center justify-center">
+            {key}
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-center gap-2">
+        {TECLADO_L2.map(key => (
+          <button key={key} onClick={() => handleKeyClick(key)} className="w-[8%] aspect-[4/5] bg-slate-700 hover:bg-cyan-500 text-white text-3xl font-bold rounded-xl active:scale-90 transition-all border-b-4 border-slate-900 hover:border-cyan-700 flex items-center justify-center">
+            {key}
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-center gap-2">
+        {TECLADO_L3.map(key => (
+          <button key={key} onClick={() => handleKeyClick(key)} className="w-[8%] aspect-[4/5] bg-slate-700 hover:bg-cyan-500 text-white text-3xl font-bold rounded-xl active:scale-90 transition-all border-b-4 border-slate-900 hover:border-cyan-700 flex items-center justify-center">
+            {key}
+          </button>
+        ))}
+        <button onClick={handleBackspace} className="w-[16.5%] bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded-xl active:scale-95 transition-all border-b-4 border-rose-900 flex items-center justify-center">
+          <Delete size={40} />
+        </button>
+      </div>
+      <div className="flex justify-center gap-2 mt-2 pt-4 border-t-2 border-slate-700/50">
+        <button onClick={() => handleKeyClick(' ')} className="w-[60%] bg-slate-700 hover:bg-cyan-500 text-slate-300 hover:text-white text-2xl font-bold rounded-xl active:scale-95 transition-all border-b-4 border-slate-900 flex items-center justify-center uppercase tracking-widest py-3">
+          Espaço
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-slate-900 relative p-12 animate-in fade-in duration-500 overflow-hidden">
       
@@ -83,7 +138,6 @@ export default function Welcome() {
 
       {view === 'home' && (
         <div className="absolute top-12 left-12 flex flex-col gap-4 z-50">
-          {/* BOTÃO RANKING GERAL (Mural Removido) */}
           <button 
             onClick={() => { setActiveRankingTab('ranking'); setScreen('ranking'); }}
             className="flex items-center gap-4 px-8 py-4 bg-slate-800/80 backdrop-blur-md border-2 border-cyan-500 rounded-full text-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-95 font-bold text-xl overflow-hidden group w-full"
@@ -106,7 +160,7 @@ export default function Welcome() {
 
           <div className="flex gap-12 w-full justify-center">
             <button 
-              onClick={() => setView('new')} 
+              onClick={() => { setView('new'); setActiveField('name'); }} 
               className="relative rounded-[2.5rem] p-[4px] w-full max-w-sm overflow-hidden active:scale-95 transition-transform shadow-[0_0_30px_rgba(6,182,212,0.2)] bg-slate-900 group"
             >
               <div className="absolute -inset-[100%] bg-[conic-gradient(from_0deg,transparent_0_270deg,#06b6d4_360deg)] animate-[spin_3s_linear_infinite]" />
@@ -122,7 +176,7 @@ export default function Welcome() {
             </button>
 
             <button 
-              onClick={() => setView('returning')} 
+              onClick={() => { setView('returning'); }} 
               className="relative rounded-[2.5rem] p-[4px] w-full max-w-sm overflow-hidden active:scale-95 transition-transform shadow-[0_0_30px_rgba(16,185,129,0.2)] bg-slate-900 group"
             >
               <div className="absolute -inset-[100%] bg-[conic-gradient(from_180deg,transparent_0_270deg,#10b981_360deg)] animate-[spin_3s_linear_infinite]" />
@@ -141,34 +195,36 @@ export default function Welcome() {
       )}
 
       {view === 'new' && (
-        <div className="flex flex-col items-center max-w-2xl w-full animate-in slide-in-from-right duration-300">
+        <div className="flex flex-col items-center max-w-5xl w-full animate-in slide-in-from-right duration-300">
           {newUserStep === 1 ? (
             <>
-              <h2 className="text-5xl font-black text-white mb-12">Novo Cadastro</h2>
-              <div className="w-full flex flex-col gap-6 mb-12">
-                <input 
-                  type="text" 
-                  placeholder="Seu Nome Completo" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)} 
-                  className="w-full bg-slate-800 border-2 border-slate-700 text-white text-3xl p-6 rounded-2xl outline-none focus:border-cyan-500 text-center shadow-inner"
-                  maxLength={30}
-                />
-                <input 
-                  type="text" 
-                  placeholder="Órgão ou Setor (ex: STI, ESCON...)" 
-                  value={department} 
-                  onChange={(e) => setDepartment(e.target.value)} 
-                  className="w-full bg-slate-800 border-2 border-slate-700 text-white text-3xl p-6 rounded-2xl outline-none focus:border-cyan-500 text-center uppercase shadow-inner"
-                  maxLength={15}
-                />
+              <h2 className="text-5xl font-black text-white mb-10">Novo Cadastro</h2>
+              
+              <div className="w-full flex gap-6 mb-8">
+                <div 
+                  onClick={() => setActiveField('name')} 
+                  className={`flex-1 p-6 rounded-2xl border-4 text-3xl text-center uppercase cursor-pointer transition-all shadow-inner ${activeField === 'name' ? 'border-cyan-500 bg-slate-800 text-white' : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-500'}`}
+                >
+                  {name || <span className="text-slate-600">NOME COMPLETO</span>}
+                  {activeField === 'name' && <span className="animate-pulse ml-1 text-cyan-400">|</span>}
+                </div>
+                <div 
+                  onClick={() => setActiveField('department')} 
+                  className={`flex-1 p-6 rounded-2xl border-4 text-3xl text-center uppercase cursor-pointer transition-all shadow-inner ${activeField === 'department' ? 'border-cyan-500 bg-slate-800 text-white' : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-500'}`}
+                >
+                  {department || <span className="text-slate-600">SETOR / ÓRGÃO</span>}
+                  {activeField === 'department' && <span className="animate-pulse ml-1 text-cyan-400">|</span>}
+                </div>
               </div>
+
+              {renderKeyboard()}
+
               <button 
                 onClick={handleCreateProfile} 
                 disabled={name.trim() === '' || department.trim() === ''}
-                className="flex items-center justify-center gap-4 w-full py-8 bg-gradient-to-r from-cyan-500 to-blue-600 disabled:from-slate-800 disabled:text-slate-500 disabled:border-2 disabled:border-slate-700 text-white text-3xl font-bold rounded-2xl transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
+                className="flex items-center justify-center gap-4 w-full mt-8 py-6 bg-gradient-to-r from-emerald-500 to-teal-600 disabled:from-slate-800 disabled:text-slate-500 disabled:border-2 disabled:border-slate-700 text-white text-3xl font-bold rounded-2xl transition-all active:scale-95 shadow-lg shadow-emerald-500/30"
               >
-                <CheckCircle2 size={40} /> Continuar
+                <CheckCircle2 size={40} /> Concluir Cadastro
               </button>
             </>
           ) : (
@@ -201,62 +257,49 @@ export default function Welcome() {
       )}
 
       {view === 'returning' && (
-        <div className="flex flex-col items-center max-w-6xl w-full animate-in slide-in-from-right duration-300">
-          <h2 className="text-6xl font-black text-white mb-4">Encontrar Perfil</h2>
-          <p className="text-slate-400 text-2xl mb-12">Busque pelo seu nome ou use o filtro de letras abaixo.</p>
+        <div className="flex flex-col items-center max-w-[90vw] xl:max-w-7xl w-full animate-in slide-in-from-right duration-300">
+          <h2 className="text-6xl font-black text-white mb-10">Encontrar Perfil</h2>
           
-          <div className="w-full max-w-3xl relative mb-8">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={36} />
-            <input 
-              type="text" 
-              placeholder="Digite o nome se preferir..." 
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setLetterFilter(null);
-              }}
-              className="w-full bg-slate-800 border-2 border-slate-700 text-white text-3xl p-6 pl-24 rounded-full outline-none focus:border-emerald-500 transition-all shadow-inner" 
-            />
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3 mb-12 w-full max-w-4xl">
+          {/* Filtro de Letras Alinhado perfeitamente em 2 Linhas */}
+          <div className="flex flex-wrap justify-center gap-3 mb-10 w-full max-w-[1100px] px-4">
             <button 
-              onClick={() => { setLetterFilter(null); setSearchTerm(''); }}
-              className={`px-6 py-3 rounded-xl font-black text-xl transition-all active:scale-95 ${!letterFilter && searchTerm === '' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}
+              onClick={() => setLetterFilter(null)}
+              className={`px-6 h-[4rem] rounded-xl font-black text-2xl transition-all active:scale-95 flex-shrink-0 ${!letterFilter ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'}`}
             >
               TODOS
             </button>
             {ALFABETO.map(letter => (
               <button
                 key={letter}
-                onClick={() => { setLetterFilter(letter); setSearchTerm(''); }}
-                className={`w-14 h-14 flex items-center justify-center rounded-xl font-black text-2xl transition-all active:scale-95 ${letterFilter === letter ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}
+                onClick={() => setLetterFilter(letter)}
+                className={`w-[4rem] h-[4rem] flex items-center justify-center rounded-xl font-black text-2xl transition-all active:scale-95 flex-shrink-0 ${letterFilter === letter ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'}`}
               >
                 {letter}
               </button>
             ))}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-h-[35vh] overflow-y-auto pr-4 custom-scrollbar pb-12">
+          {/* Grid com Altura Fixa (h-[45vh]) e Content-Start para evitar que o layout pule */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full h-[45vh] content-start overflow-y-auto pr-4 custom-scrollbar pb-12 mt-2">
             {filteredUsers.length === 0 ? (
-              <div className="col-span-full text-center text-slate-500 text-3xl mt-8">Nenhum participante encontrado com este filtro.</div>
+              <div className="col-span-full text-center text-slate-500 text-3xl mt-8">Nenhum participante com esta letra.</div>
             ) : (
               filteredUsers.map((user) => (
                 <button 
                   key={user.id}
                   onClick={() => handleReturningUser(user)} 
-                  className="flex items-center gap-6 bg-slate-800 p-5 rounded-[2rem] border-2 border-slate-700 transition-all text-left active:scale-95 shadow-md"
+                  className="flex items-center gap-4 bg-slate-800 p-5 rounded-[2rem] border-2 border-slate-700 transition-all text-left hover:border-cyan-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95"
                 >
-                  <div className="w-20 h-20 bg-slate-700 rounded-full flex-shrink-0 flex items-center justify-center text-slate-300 font-bold text-3xl overflow-hidden border-2 border-slate-600">
+                  <div className="w-[4.5rem] h-[4.5rem] bg-slate-700 rounded-full flex-shrink-0 flex items-center justify-center text-slate-300 font-bold text-2xl overflow-hidden border-2 border-slate-600">
                     {user.photoBase64 ? (
-                      <img src={user.photoBase64} alt={user.name} className="w-full h-full object-cover" />
+                      <img src={user.photoBase64} alt={user.name} className="w-full h-full object-cover object-top" />
                     ) : (
                       user.name.substring(0, 2).toUpperCase()
                     )}
                   </div>
                   <div className="flex-1 overflow-hidden flex flex-col justify-center">
-                    <p className="text-2xl font-black text-white truncate mb-1">{user.name}</p>
-                    <p className="text-base text-emerald-400 font-bold tracking-widest uppercase">{user.department}</p>
+                    <p className="text-xl font-black text-white truncate mb-1">{user.name}</p>
+                    <p className="text-sm text-emerald-400 font-bold tracking-widest uppercase truncate">{user.department}</p>
                   </div>
                 </button>
               ))
